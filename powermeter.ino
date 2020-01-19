@@ -7,6 +7,8 @@
 #define DEFAULT_AVERAGING 6
 #define DEFAULT_BAND 3
 
+#define AD8317_INPUT A0
+
 #define SCREEN_WIDTH 128
 #define SCREEN_HEIGHT 32
 
@@ -14,7 +16,7 @@
 #define MAX 1
 #define MIN 2
 
-#define OLED_RESET    -1 // Reset pin # (or -1 if sharing Arduino reset pin)
+#define OLED_RESET -1
 
 #define MAX_ATT 70
 
@@ -42,7 +44,7 @@ void setup() {
   digitalWrite(2, HIGH);
 
   delay(200);
-  
+
   analogReference(EXTERNAL);
   Serial.begin(115200);
   Serial.println();
@@ -51,7 +53,6 @@ void setup() {
   display.clearDisplay();
 
   prepare_calib();
-  
 }
 
 // prepare "a" & "b" coefficients for calibration
@@ -76,7 +77,7 @@ void display_all(int val) {
   display.setCursor(0, 0);
   display.print(get_dbm(val), 1);
 
-  // print units (todo: mW + Watts)
+  // print units
   display.setTextSize(2);
   display.setCursor(90, 0);
   display.print("dBm");
@@ -105,27 +106,25 @@ void display_all(int val) {
   // print band label
   display.setCursor(110, 16);
   display.print(band_labels[band]);
-      
+
   display.display();
 }
-
-
 
 void loop() {
 
   cumulative = 0;
   lowest = 1024;
   highest = 0;
-  
+
   // read ADC samples, capture min&max
   for(int x=0; x<avg_values[averaging]; x++) {
-    r = analogRead(A0);
+    r = analogRead(AD8317_INPUT);
     cumulative += r;
     if(r < lowest) lowest = r;
     if(r > highest) highest = r;
   }
 
-  // control over serial port - TODO: buttons!
+  // control over serial port
   if(Serial.available()) {
     char k = Serial.read();
     if(k=='m') mode = (mode+1)%MODES;
@@ -145,6 +144,4 @@ void loop() {
       display_all(highest);
       break;
   }
-  
-  
 }
