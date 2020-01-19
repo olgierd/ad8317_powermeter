@@ -20,6 +20,7 @@
 * Build a voltage reference and connect it to `AREF` pin of Arduino, VCC (5V) and GND.
 ![Reference voltage schematic](reference_voltage.png)
 * Connect AD8317 module output to `A0` pin of Arduino, connect the grounds together. Provide 5V to the module.
+* Connect OLED display to VCC, GND & SDA (`A4`), SCL (`A5`) Arduino pins.
 
 ## TODO
 * Add buttons
