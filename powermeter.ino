@@ -25,7 +25,7 @@ char *mode_labels[] = { "AVG", "MAX", "MIN" };
 
 #define BANDS 9
 char *band_labels[] = { "10M", "20M", "50M", "144", "430", "1G2", "2G3", "5G", "10G" };
-uint16_t cal_40dbm[]= { 600,   600,   600,   600,   600,   600,   600,   600,  600   };
+uint16_t cal_40dbm[]= { 600,   600,   600,   600,   600,   600,   600,   600,  600   }; // guessing for now
 uint16_t cal_10dbm[]= { 225,   225,   225,   225,   225,   225,   225,   225,  225   };
 double cal_a[] =      { 0,     0,     0,     0,     0,     0,     0,     0,    0     };
 double cal_b[] =      { 0,     0,     0,     0,     0,     0,     0,     0,    0     };
@@ -33,7 +33,10 @@ double cal_b[] =      { 0,     0,     0,     0,     0,     0,     0,     0,    0
 #define AVERAGE_MODES 10
 uint16_t avg_values[] = { 1, 5, 10, 50, 100, 500, 1000, 2000, 5000, 10000};
 
-int lowest, highest, r, mode=DEFAULT_MODE, averaging=DEFAULT_AVERAGING, band=DEFAULT_BAND, att;
+#define SELECTIONS_AVAIL 6
+enum btn_select{SEL_UNITS, SEL_BAND, SEL_MODE, SEL_AVG, SEL_ATT, SEL_NONE};
+
+int lowest, highest, r, mode=DEFAULT_MODE, averaging=DEFAULT_AVERAGING, band=DEFAULT_BAND, att, current_sel;
 uint32_t cumulative;
 
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
@@ -68,6 +71,16 @@ double get_dbm(int readout) {
   return cal_a[band]*readout + cal_b[band] + att;
 }
 
+void invert_text_if_selected(uint8_t value) {
+  if(current_sel == value) {
+    display.setTextColor(SSD1306_BLACK, SSD1306_WHITE); // invert text color
+  }
+}
+
+void reset_text_color() {
+  display.setTextColor(SSD1306_WHITE, SSD1306_BLACK); // regular white-on-black
+}
+
 void display_all(int val) {
   display.clearDisplay();
 
@@ -80,16 +93,27 @@ void display_all(int val) {
   // print units
   display.setTextSize(2);
   display.setCursor(90, 0);
+  invert_text_if_selected(SEL_UNITS);
   display.print("dBm");
+  reset_text_color();
+
+  // print band label
+  display.setTextSize(1);
+  display.setCursor(110, 16);
+  invert_text_if_selected(SEL_BAND);
+  display.print(band_labels[band]);
+  reset_text_color();
 
   // print measurement mode
-  display.setTextSize(1);
   display.setCursor(0, 24);
+  invert_text_if_selected(SEL_MODE);
   display.print(mode_labels[mode]);
+  reset_text_color();
   display.print(":");
 
   // print dataset size
   display.setCursor(25, 24);
+  invert_text_if_selected(SEL_AVG);
   if(avg_values[averaging] < 1000) {
     display.print(avg_values[averaging]);
   }
@@ -97,15 +121,14 @@ void display_all(int val) {
     display.print(avg_values[averaging]/1000);
     display.print("K");
   }
+  reset_text_color();
 
   // print attenuator value
   display.setCursor(48, 24);
   display.print("ATT: ");
+  invert_text_if_selected(SEL_ATT);
   display.print(att);
-
-  // print band label
-  display.setCursor(110, 16);
-  display.print(band_labels[band]);
+  reset_text_color();
 
   display.display();
 }
@@ -131,6 +154,17 @@ void loop() {
     if(k=='b') band = (band+1)%BANDS;
     if(k=='a') averaging = (averaging+1)%AVERAGE_MODES;
     if(k=='t') att = (att + 10)%MAX_ATT;
+    if(k==',') {
+      // simluation of physical button #1 - "SELECT"
+      current_sel = (current_sel + 1) % SELECTIONS_AVAIL;
+    }
+    if(k=='.') {
+      // simluation of physical button #2 - "SET"
+      if(current_sel == SEL_MODE) mode = (mode+1)%MODES;
+      if(current_sel == SEL_BAND) band = (band+1)%BANDS;
+      if(current_sel == SEL_AVG) averaging = (averaging+1)%AVERAGE_MODES;
+      if(current_sel == SEL_ATT) att = (att + 10)%MAX_ATT;
+    }
   }
 
   switch(mode) {
