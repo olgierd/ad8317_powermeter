@@ -36,7 +36,7 @@ uint16_t avg_values[] = { 1, 5, 10, 50, 100, 500, 1000, 2000, 5000, 10000};
 #define SELECTIONS_AVAIL 6
 enum btn_select{SEL_UNITS, SEL_BAND, SEL_MODE, SEL_AVG, SEL_ATT, SEL_NONE};
 
-int lowest, highest, r, mode=DEFAULT_MODE, averaging=DEFAULT_AVERAGING, band=DEFAULT_BAND, att, current_sel;
+int lowest, highest, r, mode=DEFAULT_MODE, averaging=DEFAULT_AVERAGING, band=DEFAULT_BAND, att, current_sel=SEL_NONE;
 uint32_t cumulative;
 
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
