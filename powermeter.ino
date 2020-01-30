@@ -36,8 +36,9 @@ uint16_t avg_values[] = { 1, 5, 10, 50, 100, 500, 1000, 2000, 5000, 10000};
 #define SELECTIONS_AVAIL 6
 enum btn_select{SEL_UNITS, SEL_BAND, SEL_MODE, SEL_AVG, SEL_ATT, SEL_NONE};
 
-int lowest, highest, r, mode=DEFAULT_MODE, averaging=DEFAULT_AVERAGING, band=DEFAULT_BAND, att, current_sel=SEL_NONE;
+int lowest, highest, r, mode=DEFAULT_MODE, averaging=DEFAULT_AVERAGING, band=DEFAULT_BAND, att, current_sel=SEL_NONE, display_value;
 uint32_t cumulative;
+char k;
 
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 
@@ -133,6 +134,25 @@ void display_all(int val) {
   display.display();
 }
 
+void serial_parse() {
+  k = Serial.read();
+  if(k=='m') mode = (mode+1)%MODES;
+  if(k=='b') band = (band+1)%BANDS;
+  if(k=='a') averaging = (averaging+1)%AVERAGE_MODES;
+  if(k=='t') att = (att + 10)%MAX_ATT;
+  if(k==',') {
+    // simluation of physical button #1 - "SELECT"
+    current_sel = (current_sel + 1) % SELECTIONS_AVAIL;
+  }
+  if(k=='.') {
+    // simluation of physical button #2 - "SET"
+    if(current_sel == SEL_MODE) mode = (mode+1)%MODES;
+    if(current_sel == SEL_BAND) band = (band+1)%BANDS;
+    if(current_sel == SEL_AVG) averaging = (averaging+1)%AVERAGE_MODES;
+    if(current_sel == SEL_ATT) att = (att + 10)%MAX_ATT;
+  }
+}
+
 void loop() {
 
   cumulative = 0;
@@ -145,37 +165,28 @@ void loop() {
     cumulative += r;
     if(r < lowest) lowest = r;
     if(r > highest) highest = r;
+    if(x&0xff == 0xff && Serial.available()) {
+      serial_parse(); // check serial commands every 256 - reduce lag
+      display_all(display_value); // update the display
+    }
   }
 
   // control over serial port
   if(Serial.available()) {
-    char k = Serial.read();
-    if(k=='m') mode = (mode+1)%MODES;
-    if(k=='b') band = (band+1)%BANDS;
-    if(k=='a') averaging = (averaging+1)%AVERAGE_MODES;
-    if(k=='t') att = (att + 10)%MAX_ATT;
-    if(k==',') {
-      // simluation of physical button #1 - "SELECT"
-      current_sel = (current_sel + 1) % SELECTIONS_AVAIL;
-    }
-    if(k=='.') {
-      // simluation of physical button #2 - "SET"
-      if(current_sel == SEL_MODE) mode = (mode+1)%MODES;
-      if(current_sel == SEL_BAND) band = (band+1)%BANDS;
-      if(current_sel == SEL_AVG) averaging = (averaging+1)%AVERAGE_MODES;
-      if(current_sel == SEL_ATT) att = (att + 10)%MAX_ATT;
-    }
+    serial_parse();
   }
 
   switch(mode) {
     case AVG:
-      display_all(cumulative/avg_values[averaging]);
+      display_value = cumulative/avg_values[averaging];
       break;
     case MAX:
-      display_all(lowest);
+      display_value = lowest;
       break;
     case MIN:
-      display_all(highest);
+      display_value = highest;
       break;
   }
+
+  display_all(display_value);
 }
