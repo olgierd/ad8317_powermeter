@@ -1,5 +1,7 @@
 # 10GHz AD8317 RF power meter
 
+![Picture of OLED display](https://pbs.twimg.com/media/EOG-YURXsAAglKo?format=jpg&name=large)
+
 ## Features
 * -55 to 0 dBm RF power measurement up to 10 GHz
 * 2-point calibration (linear function), separate for each band
