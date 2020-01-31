@@ -16,6 +16,9 @@
 #define MAX 1
 #define MIN 2
 
+#define BTN_SET 10
+#define BTN_SELECT 9
+
 #define CAL_LOW -40
 #define CAL_UP -10
 
@@ -39,7 +42,11 @@ uint16_t avg_values[] = { 1, 5, 10, 50, 100, 500, 1000, 2000, 5000, 10000};
 #define SELECTIONS_AVAIL 6
 enum btn_select{SEL_UNITS, SEL_BAND, SEL_MODE, SEL_AVG, SEL_ATT, SEL_NONE};
 
-int lowest, highest, r, mode=DEFAULT_MODE, averaging=DEFAULT_AVERAGING, band=DEFAULT_BAND, att, current_sel=SEL_NONE, display_value;
+#define UNITS_AVAIL 2
+enum measure_units{DBM, MW};
+
+int mode=DEFAULT_MODE, averaging=DEFAULT_AVERAGING, band=DEFAULT_BAND, current_sel=SEL_NONE, units;
+int lowest, highest, r, att, display_value;
 uint32_t cumulative;
 char k;
 
@@ -55,6 +62,15 @@ void setup() {
   analogReference(EXTERNAL);
   Serial.begin(115200);
   Serial.println();
+
+  pinMode(BTN_SET, INPUT_PULLUP);
+  pinMode(BTN_SELECT, INPUT_PULLUP);
+
+  // ground for buttons
+  pinMode(12, OUTPUT);
+  pinMode(7, OUTPUT);
+  digitalWrite(12, LOW);
+  digitalWrite(7, LOW);
 
   display.begin(SSD1306_SWITCHCAPVCC, 0x3C);
   display.clearDisplay();
@@ -137,23 +153,49 @@ void display_all(int val) {
   display.display();
 }
 
+void set_action() {
+  if(current_sel == SEL_MODE) mode = (mode+1)%MODES;
+  if(current_sel == SEL_BAND) band = (band+1)%BANDS;
+  if(current_sel == SEL_AVG) averaging = (averaging+1)%AVERAGE_MODES;
+  if(current_sel == SEL_ATT) att = (att + 10)%MAX_ATT;
+}
+
+void select_action() {
+  current_sel = (current_sel + 1) % SELECTIONS_AVAIL;
+}
+
 void serial_parse() {
   k = Serial.read();
   if(k=='m') mode = (mode+1)%MODES;
   if(k=='b') band = (band+1)%BANDS;
   if(k=='a') averaging = (averaging+1)%AVERAGE_MODES;
   if(k=='t') att = (att + 10)%MAX_ATT;
+
+  // simulation of physical buttons
   if(k==',') {
-    // simluation of physical button #1 - "SELECT"
-    current_sel = (current_sel + 1) % SELECTIONS_AVAIL;
+    select_action();
   }
   if(k=='.') {
-    // simluation of physical button #2 - "SET"
-    if(current_sel == SEL_MODE) mode = (mode+1)%MODES;
-    if(current_sel == SEL_BAND) band = (band+1)%BANDS;
-    if(current_sel == SEL_AVG) averaging = (averaging+1)%AVERAGE_MODES;
-    if(current_sel == SEL_ATT) att = (att + 10)%MAX_ATT;
+    set_action();
   }
+}
+
+uint8_t handle_buttons() {
+  if(!digitalRead(BTN_SET)) {
+    set_action();
+    while(!digitalRead(BTN_SET)) {}
+    delay(5);
+  }
+  else if(!digitalRead(BTN_SELECT)) {
+    select_action();
+    while(!digitalRead(BTN_SELECT)) {}
+    delay(5);
+  }
+  else {
+    return 0; // return 0 if no key was pressed
+  }
+
+  return 1; // return 1 - key was pressed
 }
 
 void loop() {
@@ -172,12 +214,21 @@ void loop() {
       serial_parse(); // check serial commands every 256 - reduce lag
       display_all(display_value); // update the display
     }
+    if(x&0xff == 0xff) {  // check buttons state every 256 adc loop
+      if(handle_buttons()){
+        display_all(display_value);
+      }
+    }
   }
 
   // control over serial port
   if(Serial.available()) {
     serial_parse();
   }
+
+  // check buttons
+  handle_buttons();
+
 
   switch(mode) {
     case AVG:
