@@ -3,7 +3,7 @@
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
 
-#define DEFAULT_MODE 1
+#define DEFAULT_MODE 0
 #define DEFAULT_AVERAGING 6
 #define DEFAULT_BAND 3
 
@@ -16,6 +16,9 @@
 #define MAX 1
 #define MIN 2
 
+#define CAL_LOW -40
+#define CAL_UP -10
+
 #define OLED_RESET -1
 
 #define MAX_ATT 70
@@ -25,8 +28,8 @@ char *mode_labels[] = { "AVG", "MAX", "MIN" };
 
 #define BANDS 9
 char *band_labels[] = { "10M", "20M", "50M", "144", "430", "1G2", "2G3", "5G", "10G" };
-uint16_t cal_40dbm[]= { 600,   600,   600,   600,   600,   600,   600,   600,  600   }; // guessing for now
-uint16_t cal_10dbm[]= { 225,   225,   225,   225,   225,   225,   225,   225,  225   };
+uint16_t cal_lower[]= { 600,   600,   600,   600,   600,   600,   600,   600,  600   }; // guessing for now
+uint16_t cal_upper[]= { 225,   225,   225,   225,   225,   225,   225,   225,  225   };
 double cal_a[] =      { 0,     0,     0,     0,     0,     0,     0,     0,    0     };
 double cal_b[] =      { 0,     0,     0,     0,     0,     0,     0,     0,    0     };
 
@@ -62,8 +65,8 @@ void setup() {
 // prepare "a" & "b" coefficients for calibration
 void prepare_calib() {
   for(int i=0; i<BANDS; i++) {
-    cal_a[i] = -30.0/(cal_40dbm[i]-cal_10dbm[i]);
-    cal_b[i] = -((double)cal_40dbm[i]*cal_a[i]+40);
+    cal_a[i] = (float)(CAL_LOW-CAL_UP)/(cal_lower[i]-cal_upper[i]);
+    cal_b[i] = -((double)cal_lower[i]*cal_a[i]-CAL_LOW);
   }
 }
 
