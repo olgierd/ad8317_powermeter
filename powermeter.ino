@@ -130,12 +130,17 @@ void display_all(int val) {
   display.setTextSize(3);
   display.setTextColor(SSD1306_WHITE);
   display.setCursor(0, 0);
-  switch(units) {
-    case DBM:
-      display.print(get_dbm(val), 1);
-      break;
-    case RAW:
-      display.print(val);
+  if(cal_upper[band] > 1023 || cal_lower[band] > 1023 || cal_lower <= cal_upper) {   // display "CAL" if band is not calibrated
+    display.print("CAL");
+  }
+  else {
+    switch(units) {
+      case DBM:
+        display.print(get_dbm(val), 1);
+        break;
+      case RAW:
+        display.print(val);
+    }  
   }
 
   // print units
