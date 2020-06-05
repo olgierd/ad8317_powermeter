@@ -33,10 +33,10 @@ char *mode_labels[] = { "AVG", "MAX", "MIN" };
 
 #define BANDS 9
 char *band_labels[] = { "10M", "20M", "50M", "144", "430", "1G2", "2G3", "5G", "10G" };
-uint16_t cal_lower[]= { 600,   600,   600,   600,   600,   600,   600,   600,  600   }; // guessing for now
-uint16_t cal_upper[]= { 225,   225,   225,   225,   225,   225,   225,   225,  225   };
-double cal_a[] =      { 0,     0,     0,     0,     0,     0,     0,     0,    0     };
-double cal_b[] =      { 0,     0,     0,     0,     0,     0,     0,     0,    0     };
+
+// following arrays are filled in by prepare_calib()
+uint16_t cal_lower[BANDS], cal_upper[BANDS];
+double cal_a[BANDS], cal_b[BANDS];
 
 #define AVERAGE_MODES 10
 uint16_t avg_values[] = { 1, 5, 10, 50, 100, 500, 1000, 2000, 5000, 10000};
@@ -65,10 +65,12 @@ void setup() {
 
   delay(100);
 
+  // start the ADC
   analogReference(EXTERNAL);
   Serial.begin(115200);
   Serial.println();
 
+  // configure buttons
   pinMode(BTN_SET, INPUT_PULLUP);
   pinMode(BTN_SELECT, INPUT_PULLUP);
 
@@ -79,8 +81,10 @@ void setup() {
   display.begin(SSD1306_SWITCHCAPVCC, 0x3C);
   display.clearDisplay();
 
+  // read eeprom, fill in calibration tables
   prepare_calib();
 
+  // if booting with any of the buttons pressed, go into CALIB mode
   if(!digitalRead(BTN_SET) || !digitalRead(BTN_SELECT)) {
     calibration_mode = 1;
     units = RAW;
@@ -97,7 +101,7 @@ void setup() {
 // read values from EEPROM and prepare "a" & "b" coefficients for calibration
 void prepare_calib() {  
   for(int i=0; i<BANDS; i++) {
-    cal_lower[i] = (EEPROM.read(i*4) << 8) + EEPROM.read(i*4+1);
+    cal_lower[i] = (EEPROM.read(i*4) << 8) + EEPROM.read(i*4+1);    // 10-bit values - split into 2 eeprom bytes
     cal_upper[i] = (EEPROM.read(i*4+2) << 8) + EEPROM.read(i*4+3);
     cal_a[i] = (float)(CAL_LOW-CAL_UP)/(cal_lower[i]-cal_upper[i]);
     cal_b[i] = -((double)cal_lower[i]*cal_a[i]-CAL_LOW);
@@ -167,6 +171,7 @@ void display_all(int val) {
   }
   reset_text_color();
 
+  // hide ATT when in CALIB mode
   if(!calibration_mode) {
     // print attenuator value
     display.setCursor(48, 24);
@@ -194,11 +199,13 @@ void display_all(int val) {
   display.display();
 }
 
+// save current RAW readout to EEPROM
 void save_calibration() {
   EEPROM.write(band*4 + cal_level*2, (display_value>>8));
   EEPROM.write(band*4 + cal_level*2 + 1, (display_value&0xff));
 }
 
+// SET button
 void set_action() {
   if(current_sel == SEL_MODE) mode = (mode+1)%MODES;
   if(current_sel == SEL_BAND) band = (band+1)%BANDS;
@@ -209,6 +216,7 @@ void set_action() {
   if(current_sel == SEL_SAVE) save_calibration();
 }
 
+// SELECT button
 void select_action() {
   if(calibration_mode) {
     current_sel_cal = (current_sel_cal+1)%SELECTIONS_CAL;
@@ -233,7 +241,6 @@ void print_calibration() {
     Serial.print(" H: ");
     Serial.println(cal_upper[i]);
   }
-  
 }
 
 void serial_parse() {
@@ -301,7 +308,6 @@ void loop() {
 
   // check buttons
   handle_buttons();
-
 
   switch(mode) {
     case AVG:
