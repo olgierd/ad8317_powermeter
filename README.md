@@ -23,9 +23,16 @@
 ![Reference voltage schematic](reference_voltage.png)
 * Connect AD8317 module output to `A0` pin of Arduino, connect the grounds together. Provide 5V to the module.
 * Connect OLED display to VCC, GND & SDA (`A4`), SCL (`A5`) Arduino pins.
+* Connect buttons to pins D9 and D10. They should short pins to GND when pressed, internal pullup is used. GND is also available on D8.
+
+## Calibration
+* Power the meter while pressing a button
+* "CALIB" should appear on the screen, raw ADC value will be displayed
+* Select band and averaging, as well as current generator level (-40 or -10 dBm by default)
+* Select "SAVE" and click SET button to save the calibration value to EEPROM
+* To make sure the calibration has been saved correctly, open serial port (115200 bps) and send "p" letter to the meter
+* Table with raw calibration values will be printed via serial terminal
 
 ## TODO
 * Add buttons
 * Show power also in mW/W
-* Display raw ADC readout for calibration
-* Store settings in EEPROM
