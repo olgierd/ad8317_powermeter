@@ -32,7 +32,7 @@
 char *mode_labels[] = { "AVG", "MAX", "MIN" };
 
 #define BANDS 9
-char *band_labels[] = { "10M", "20M", "50M", "144", "430", "1G2", "2G3", "5G", "10G" };
+char *band_labels[] = { "10M", "20M", "50M", "144", "430", "1G2", "2G4", "5G", "10G" };
 
 // following arrays are filled in by prepare_calib()
 uint16_t cal_lower[BANDS], cal_upper[BANDS];
@@ -47,9 +47,9 @@ enum btn_select{SEL_UNITS, SEL_BAND, SEL_MODE, SEL_AVG, SEL_ATT, SEL_NONE, SEL_S
 #define SELECTIONS_CAL 5
 int calibration_selections[] = { SEL_BAND, SEL_MODE, SEL_AVG, SEL_CAL_LEVEL, SEL_SAVE };
 
-#define UNITS_AVAIL 2
-enum measure_units{DBM, RAW};
-char *units_labels[] = { "dBm", "RAW"};
+#define UNITS_AVAIL 4
+enum measure_units{DBM, RAW, WATT, MWATT};
+char *units_labels[] = { "dBm", "RAW", "W", "mW"};
 
 int mode=DEFAULT_MODE, averaging=DEFAULT_AVERAGING, band=DEFAULT_BAND, current_sel=SEL_NONE, units=SEL_UNITS;
 int lowest, highest, r, att, display_value, calibration_mode=0, current_sel_cal=SEL_BAND, cal_level=0;
@@ -92,7 +92,7 @@ void setup() {
     display.clearDisplay();
     display.setTextColor(WHITE);
     display.setTextSize(4);
-    display.print("CALIB :)");
+    display.print("CAL");
     display.display();
     delay(3000);
   }
@@ -113,6 +113,10 @@ double get_dbm(int readout) {
   return cal_a[band]*readout + cal_b[band] + att;
 }
 
+double get_milliwatt(double dbm) {
+  return pow(10, dbm/10);
+}
+
 void invert_text_if_selected(uint8_t value) {
   if(current_sel == value) {
     display.setTextColor(SSD1306_BLACK, SSD1306_WHITE); // invert text color
@@ -123,24 +127,29 @@ void reset_text_color() {
   display.setTextColor(SSD1306_WHITE, SSD1306_BLACK); // regular white-on-black
 }
 
-void display_all(int val) {
+void display_all() {
   display.clearDisplay();
 
   // print measured value
   display.setTextSize(3);
   display.setTextColor(SSD1306_WHITE);
   display.setCursor(0, 0);
-  if(cal_upper[band] > 1023 || cal_lower[band] > 1023 || cal_lower <= cal_upper) {   // display "CAL" if band is not calibrated
-    display.print("CAL");
-  }
-  else {
-    switch(units) {
-      case DBM:
-        display.print(get_dbm(val), 1);
-        break;
-      case RAW:
-        display.print(val);
-    }  
+
+  switch(units) {
+    case DBM:
+      display.print(get_dbm(display_value), 1);
+      break;
+    case RAW:
+      display.print(display_value);
+      break;
+    case WATT:
+    case MWATT:
+      double watt_val = get_milliwatt(get_dbm(display_value));
+      if(units == WATT) watt_val /= 1000;
+      int val_len = log10(watt_val);
+      if(val_len < 0) val_len = 0;
+      display.print(watt_val, 3-val_len);
+      break;
   }
 
   // print units
@@ -249,6 +258,7 @@ void print_calibration() {
 }
 
 void serial_parse() {
+  if(!Serial.available()) { return; }
   k = Serial.read();
   if(k=='m') mode = (mode+1)%MODES;
   if(k=='b') band = (band+1)%BANDS;
@@ -295,24 +305,11 @@ void loop() {
     cumulative += r;
     if(r < lowest) lowest = r;
     if(r > highest) highest = r;
-    if(x&0xff == 0xff && Serial.available()) {
-      serial_parse(); // check serial commands every 256 - reduce lag
-      display_all(display_value); // update the display
-    }
-    if(x&0xff == 0xff) {  // check buttons state every 256 adc loop
-      if(handle_buttons()){
-        display_all(display_value);
-      }
+    if(x&0xff == 0xff || x == 0) { // check serial commands + buttons every 256 samples - reduce lag
+      serial_parse();
+      if(handle_buttons()) display_all();
     }
   }
-
-  // control over serial port
-  if(Serial.available()) {
-    serial_parse();
-  }
-
-  // check buttons
-  handle_buttons();
 
   switch(mode) {
     case AVG:
@@ -326,5 +323,5 @@ void loop() {
       break;
   }
 
-  display_all(display_value);
+  display_all();
 }

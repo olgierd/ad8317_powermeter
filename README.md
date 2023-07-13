@@ -8,6 +8,8 @@
 * Measuring `average`, `max` (peak) and `min` power.
 * Ability to use an external RF attenuator
 * Headless mode - control over serial only
+* Display power in dBm, mW or W
+* External attenuator support - 0..60 dB in 10 dB steps
 
 ## Parts
 
@@ -34,5 +36,5 @@
 * Table with raw calibration values will be printed via serial terminal
 
 ## TODO
-* Add buttons
-* Show power also in mW/W
+* Add buttons [done]
+* Show power also in mW/W [done]
