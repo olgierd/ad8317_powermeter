@@ -95,6 +95,23 @@ void setup() {
     display.print("CAL");
     display.display();
     delay(3000);
+    if(!digitalRead(BTN_SELECT)) { //store default calibrations to eeprom
+      display.clearDisplay();
+      display.setCursor(0, 0);
+      display.setTextSize(2);
+      display.print("DEFAULTS");
+      display.display();
+      delay(500);
+      uint16_t cal_lower_tmp[BANDS] = {631, 629, 630, 628, 625, 610, 580, 563, 563};
+      uint16_t cal_upper_tmp[BANDS] = {298, 296, 298, 293, 298, 276, 248, 232, 232};
+      for(int i=0; i<BANDS; i++) {
+        EEPROM.write(i*4,   cal_lower_tmp[i] >> 8);
+        EEPROM.write(i*4+1, cal_lower_tmp[i] & 0xFF);
+        EEPROM.write(i*4+2, cal_upper_tmp[i] >> 8);
+        EEPROM.write(i*4+3, cal_upper_tmp[i] & 0xFF);
+      }
+      prepare_calib();
+    } //store default calibrations to eeprom
   }
 }
 
