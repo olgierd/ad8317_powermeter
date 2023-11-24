@@ -219,6 +219,20 @@ void save_calibration() {
   EEPROM.write(band*4 + cal_level*2 + 1, (display_value&0xff));
 }
 
+// store default calibration values to EEPROM
+void store_default_calibration() {
+  uint16_t default_cal_lower[BANDS] = {631, 629, 630, 628, 625, 610, 580, 563, 563};
+  uint16_t default_cal_upper[BANDS] = {298, 296, 298, 293, 298, 276, 248, 232, 232};
+  for(int i=0; i<BANDS; i++) {
+    EEPROM.write(i*4,   default_cal_lower[i] >> 8);
+    EEPROM.write(i*4+1, default_cal_lower[i] & 0xFF);
+    EEPROM.write(i*4+2, default_cal_upper[i] >> 8);
+    EEPROM.write(i*4+3, default_cal_upper[i] & 0xFF);
+  }
+  Serial.println("Default calibration values have been loaded.");
+  prepare_calib();
+}
+
 // SET button
 void set_action() {
   if(current_sel == SEL_MODE) mode = (mode+1)%MODES;
@@ -265,6 +279,7 @@ void serial_parse() {
   if(k=='a') averaging = (averaging+1)%AVERAGE_MODES;
   if(k=='t') att = (att + 10)%MAX_ATT;
   if(k=='p') print_calibration();
+  if(k=='d') store_default_calibration();
 
   // simulation of physical buttons
   if(k==',') {
